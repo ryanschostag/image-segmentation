@@ -1,0 +1,12 @@
+Dealing with RGB Images:
+
+    http://scikit-image.org/docs/dev/auto_examples/color_exposure/plot_adapt_rgb.html#sphx-glr-auto-examples-color-exposure-plot-adapt-rgb-py
+    
+    Output of __main__.py:
+    
+        shape: (397, 283, 3)
+        /home/john/.local/share/virtualenvs/image-segmentation-zuN9SAIO/lib/python3.6/site-packages/skimage/filters/thresholding.py:278: UserWarning: threshold_otsu is expected to work correctly only for grayscale images; image shape (397, 283, 3) looks like an RGB image
+          warn(msg.format(image.shape))
+        threshold: 106
+    
+    
