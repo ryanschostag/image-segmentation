@@ -11,9 +11,11 @@ from skimage.color import rgb2gray
 from skimage import filters
 from os import chdir, path
 from glob import glob
+import magic as fmagic
+import csv
 
 
-class ImageMatrix(object):
+class Matrix(object):
     """
     Converts image to numpy matrix
     
@@ -23,46 +25,83 @@ class ImageMatrix(object):
         Python 3.x
         
     """
-    def __init__(self, image=None, mode='RGB'):
-        super().__init__()
-        self.image = image
-        self.mode = mode
-        self.images = []
-        self.directory = None
-        
-    def __call__(self):
-        self.image_to_matrix()
+    img_dir = None
+    output_csv=None
+    image = None
+    images = []
+    data = {
+        'image': None,
+        'shape': None,
+        'threshold': None,
+        'matrix_rgb': None,
+        'matrix_gray': None,
+    }
     
-    def to_matrix(self):
+    def __init__(self, image=None, img_dir=None):
+        super().__init__()
+        self.image_file = image
+        self.image_rgb = None
+        self.image_gray = None
+        self.mode = 'RGB'
+        self.img_dir = img_dir
+    
+    @property
+    def threshold(self):
+        return filters.threshold_otsu(self.image_gray)
+    
+    def is_image(self):
+        allowed_mime_types = ('image/jpeg','image/png')
+        f_type = fmagic.Magic(mime=True, uncompress=True)
+        t = f_type.from_file(self.image)
+        return t in allowed_mime_types
+        
+    def collect(self):
+        if self.img_dir is not None and path.exists(self.img_dir):
+            chdir(self.img_dir)
+
+        types = ('jp*g', 'png')
+        for img_type in types: 
+            self.images.extend(glob('**/*' + img_type + '*', recursive=True))
+    
+    def image_to_matrices(self):
         """
         Converts the image to matrix
         """
-        self.image = imread(
+        self.image_rgb = imread(
             fname=self.image,
             mode=self.mode
         )
-            
-    def to_gray(self):
-        """
-        Converts the image to grayscale
-        """
-        self.image = rgb2gray(self.image)
-            
-    def shape(self, image_matrix):
-        return image_matrix.shape
-            
-    def threshold(self, image_matrix):
-        return filters.threshold_otsu(image_matrix)
-        
-    def glob_images(self):
-        if self.directory is not None and path.exists(self.directory):
-            chdir(self.directory)
-        
-        self.images.extend(list(glob('**/*.jp*g', recursive=True)))
-        self.images.extend(list(glob('**/*.png', recursive=True)))
-        self.images.extend(list(glob('**/*.gif', recursive=True)))
-    
-    def is_image(self):
-        pass
+        self.image_gray = rgb2gray(self.image_rgb)
 
+
+class CSV(Matrix):
+    def __init__(self, image=self.image_file, img_dir=self.img_dir, output_csv):
+        super().__init__()
+        self.output_csv = output_csv
+
+    def row(self):
+        self.data = {
+            'image': self.image_file,
+            'shape': self.image_gray.shape,
+            'threshold': self.threshold,
+            'matrix_rgb': self.image_rgb,
+            'matrix_gray': self.image_gray,
+        }
+
+    def to_csv(self):
+        f = open(self.output_csv, mode='a')
+        fieldnames = list(self.data.keys())
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writerow(self.data)
+        f.close()
+
+
+class Image(CSV):
+    def __init__(self, image=None, img_dir=None, output_csv=None):
+        super().__init__()
+        self.output_file_check()
+        
+    def output_file_check(self):
+        if self.output_csv is None:
+            raise ValueError('Output file not provided.')
 
